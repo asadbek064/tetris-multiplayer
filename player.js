@@ -1,5 +1,7 @@
 class Player {
     constructor(tetris) {
+        this.isCPU = false;
+
         // constant for drop intervals
         this.DROP_SLOW = 1000;
         this.DROP_FAST = 25;
@@ -35,7 +37,99 @@ class Player {
         return shadowPos
     }
 
-    
+    // simulate a drop at the current position and retrn the score
+    simulateDrop() {
+        const originalY = this.pos.y;
+
+        // drop to botton
+        while (!this.arena.collide(this)) {
+            this.pos.y++;
+        }
+        // last move caused a collision move back a row
+        this.pos.y--; 
+
+        // merge the piece with the arena and evaluate the state
+        this.arena.merge(this);
+        const linesCleared = this.arena.sweep();
+        const height = this.getPileHeight();
+
+        // Undo the merge
+        this.arena.clearPiece(this);
+
+        this.pos.y = originalY; // Restore the original position
+
+        // (more lines cleared and lower height is better)
+        // return a heuristic score function
+        return linesCleared * 100 - height;
+    }
+
+     // calc the height of the highest occupied row
+     getPileHeight() {
+        const rows = this.arena.matrix;
+        for (let y = 0; y < rows.length; ++y) {
+            for (let x = 0; x < rows[y].length; ++x) {
+                if (rows[y][x] !== 0) {
+                    return rows.length - y;
+                }
+            }
+        }
+        return 0;
+    }
+
+    // perform the best move based on a simple heuristic
+    performBestMove() {
+        let bestScore = -Infinity;
+        let bestMove = null;
+
+        const originalX = this.pos.x;
+        const originalMatrix = this.matrix;
+
+        // test all possible moves (rotations and translations)
+        for (let rotation = 0; rotation < 4; rotation++) {
+            for (let moveX = -this.arena.matrix[0].length / 2; moveX < this.arena.matrix[0].length; moveX++) {
+                this.pos.x = moveX;
+
+                // Skip invalid positions
+                if (this.arena.collide(this)) {
+                    continue;
+                }
+
+                const score = this.simulateDrop();
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMove = { x: this.pos.x, rotation };
+                }
+
+                this.pos.x = originalX; // Restore position after testing
+            }
+            this.rotate(1); // Rotate piece
+        }
+
+        if (bestMove) {
+            // Execute the best move
+            this.matrix = originalMatrix;
+            this.pos.x = bestMove.x;
+            for (let i = 0; i < bestMove.rotation; i++) {
+                this.rotate(1);
+            }
+            this.drop();
+        } else {
+            // If no valid move is found, just drop the piece
+            this.drop();
+        }
+    }
+
+    update(deltaTime) {
+        if (this.isCPU) {
+            this.performBestMove();
+        } else {
+            this.dropCounter += deltaTime;
+            if (this.dropCounter > this.dropInterval) {
+                this.drop();
+            }
+        }
+    }
 
     // drop the piece down by one row
     drop() {
@@ -112,14 +206,6 @@ class Player {
             matrix.forEach(row => row.reverse());
         } else {
             matrix.reverse();
-        }
-    }
-
-    // Update the piece state based on elapsed time
-    update(deltaTime) {
-        this.dropCounter += deltaTime;
-        if (this.dropCounter > this.dropInterval) {
-            this.drop();
         }
     }
 }

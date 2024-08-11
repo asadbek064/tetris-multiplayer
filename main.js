@@ -8,6 +8,11 @@ playerElements.forEach(element => {
     tetri.push(tetris);
 });
 
+// Create a CPU player
+const cpuElement = document.querySelector('.cpu');
+const cpuTetris = new Tetris(cpuElement, true);
+tetri.push(cpuTetris)
+
 // event listener function for handling key presses
 const keyListener = (event) => {
     // Define key codes for player controls

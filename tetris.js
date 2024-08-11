@@ -1,5 +1,5 @@
 class Tetris {
-    constructor(element) {
+    constructor(element, isCPU = false) {
         this.element = element; 
         this.canvas = element.querySelector('canvas');
         this.context = this.canvas.getContext('2d');
@@ -7,6 +7,7 @@ class Tetris {
 
         this.arena = new Arena(12, 20); // Initialize the game arena
         this.player = new Player(this); // Initialize the player
+        this.player.isCPU = isCPU;
 
         // Define colors for the different Tetris pieces
         this.colors = [
@@ -33,6 +34,7 @@ class Tetris {
             // Request the next frame
             requestAnimationFrame(update); 
         };
+
         update();
 
         this.updateScore(0); 
@@ -50,6 +52,7 @@ class Tetris {
         // draw the areand and the actual piece
         this.drawMatrix(this.arena.matrix, { x: 0, y: 0 }); 
         this.drawMatrix(this.player.matrix, this.player.pos); 
+        
     }
 
     // Draw a matrix (arena or piece) at a specific offset

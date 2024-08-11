@@ -9,6 +9,16 @@ class Arena {
         this.matrix.forEach(row => row.fill(0));
     }
 
+    clearPiece(player) {
+        player.matrix.forEach((row, y) => {
+            row.forEach((value, x) => {
+                if (value !== 0) {
+                    this.matrix[y + player.pos.y][x + player.pos.x] = 0;
+                }
+            });
+        });
+    }
+
     // check if player's piece collides with the arena's occupied cells
     collide(player)
     {
