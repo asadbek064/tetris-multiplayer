@@ -42,16 +42,22 @@ class Tetris {
     draw() {
         this.context.fillStyle = '#000'; 
         this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // draw the ghost piece first 
+        const ghostPos = this.player.getGhostPosition();
+        this.drawMatrix(this.player.matrix, ghostPos, true)
+
+        // draw the areand and the actual piece
         this.drawMatrix(this.arena.matrix, { x: 0, y: 0 }); 
         this.drawMatrix(this.player.matrix, this.player.pos); 
     }
 
     // Draw a matrix (arena or piece) at a specific offset
-    drawMatrix(matrix, offset) {
+    drawMatrix(matrix, offset, isGhost = false) {
         matrix.forEach((row, y) => {
             row.forEach((value, x) => {
                 if (value !== 0) {
-                    this.context.fillStyle = this.colors[value]; 
+                    this.context.fillStyle = isGhost ? 'rgba(255,255,255, 0.5)' : this.colors[value]; 
                     this.context.fillRect(x + offset.x, y + offset.y, 1, 1); 
                 }
             });

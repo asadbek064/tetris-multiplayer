@@ -2,7 +2,7 @@ class Player {
     constructor(tetris) {
         // constant for drop intervals
         this.DROP_SLOW = 1000;
-        this.DROP_FAST = 50;
+        this.DROP_FAST = 25;
 
         this.tetris = tetris // ref to the tetris game instance
         this.arena = tetris.arena // ref to the arena
@@ -18,7 +18,24 @@ class Player {
         
         // start with a new piece
         this.reset();
-    } 
+    }
+
+    getGhostPosition() {
+        // clone current pos
+        const shadowPos = { ...this.pos }
+
+        // move the pieces down until it collides
+        while (!this.arena.collide({matrix: this.matrix, pos: shadowPos})) {
+            shadowPos.y++;
+        }
+
+        // move it back up to last valid pos
+        shadowPos.y--;
+
+        return shadowPos
+    }
+
+    
 
     // drop the piece down by one row
     drop() {
