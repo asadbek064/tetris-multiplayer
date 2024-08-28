@@ -2,121 +2,34 @@ class Player {
     constructor(tetris) {
         this.isCPU = false;
 
-        // constant for drop intervals
         this.DROP_SLOW = 1000;
         this.DROP_FAST = 25;
 
-        this.tetris = tetris // ref to the tetris game instance
-        this.arena = tetris.arena // ref to the arena
+        this.tetris = tetris;
+        this.arena = tetris.arena;
 
-        // initialize the counters
         this.dropCounter = 0;
         this.dropInterval = this.DROP_SLOW;
 
-        // initialize pos and matrix
-        this.pos = { x: 0, y:0 }
+        this.pos = { x: 0, y: 0 };
         this.matrix = null;
+        this.nextMatrix = null;
         this.score = 0;
-        
-        // start with a new piece
+
         this.reset();
     }
 
-    getGhostPosition() {
-        // clone current pos
-        const shadowPos = { ...this.pos }
+    reset() {
+        const pieces = 'ILJOTSZ';
+        this.matrix = this.nextMatrix || createPiece(pieces[Math.floor(Math.random() * pieces.length)]);
+        this.nextMatrix = createPiece(pieces[Math.floor(Math.random() * pieces.length)]);
+        this.pos.y = 0;
+        this.pos.x = (this.arena.matrix[0].length / 2 | 0) - (this.matrix[0].length / 2 | 0);
 
-        // move the pieces down until it collides
-        while (!this.arena.collide({matrix: this.matrix, pos: shadowPos})) {
-            shadowPos.y++;
-        }
-
-        // move it back up to last valid pos
-        shadowPos.y--;
-
-        return shadowPos
-    }
-
-    // simulate a drop at the current position and retrn the score
-    simulateDrop() {
-        const originalY = this.pos.y;
-
-        // drop to botton
-        while (!this.arena.collide(this)) {
-            this.pos.y++;
-        }
-        // last move caused a collision move back a row
-        this.pos.y--; 
-
-        // merge the piece with the arena and evaluate the state
-        this.arena.merge(this);
-        const linesCleared = this.arena.sweep();
-        const height = this.getPileHeight();
-
-        // Undo the merge
-        this.arena.clearPiece(this);
-
-        this.pos.y = originalY; // Restore the original position
-
-        // (more lines cleared and lower height is better)
-        // return a heuristic score function
-        return linesCleared * 100 - height;
-    }
-
-     // calc the height of the highest occupied row
-     getPileHeight() {
-        const rows = this.arena.matrix;
-        for (let y = 0; y < rows.length; ++y) {
-            for (let x = 0; x < rows[y].length; ++x) {
-                if (rows[y][x] !== 0) {
-                    return rows.length - y;
-                }
-            }
-        }
-        return 0;
-    }
-
-    // perform the best move based on a simple heuristic
-    performBestMove() {
-        let bestScore = -Infinity;
-        let bestMove = null;
-
-        const originalX = this.pos.x;
-        const originalMatrix = this.matrix;
-
-        // test all possible moves (rotations and translations)
-        for (let rotation = 0; rotation < 4; rotation++) {
-            for (let moveX = -this.arena.matrix[0].length / 2; moveX < this.arena.matrix[0].length; moveX++) {
-                this.pos.x = moveX;
-
-                // Skip invalid positions
-                if (this.arena.collide(this)) {
-                    continue;
-                }
-
-                const score = this.simulateDrop();
-
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestMove = { x: this.pos.x, rotation };
-                }
-
-                this.pos.x = originalX; // Restore position after testing
-            }
-            this.rotate(1); // Rotate piece
-        }
-
-        if (bestMove) {
-            // Execute the best move
-            this.matrix = originalMatrix;
-            this.pos.x = bestMove.x;
-            for (let i = 0; i < bestMove.rotation; i++) {
-                this.rotate(1);
-            }
-            this.drop();
-        } else {
-            // If no valid move is found, just drop the piece
-            this.drop();
+        if (this.arena.collide(this)) {
+            this.arena.clear();
+            this.score = 0;
+            this.tetris.updateScore(this.score);
         }
     }
 
@@ -131,20 +44,18 @@ class Player {
         }
     }
 
-    // drop the piece down by one row
     drop() {
         this.pos.y++;
         if (this.arena.collide(this)) {
             this.pos.y--;
             this.arena.merge(this);
-            this.reset();
             this.score += this.arena.sweep();
             this.tetris.updateScore(this.score);
+            this.reset();
         }
         this.dropCounter = 0;
     }
 
-    // move the piece left or right
     move(dir) {
         this.pos.x += dir;
         if (this.arena.collide(this)) {
@@ -152,60 +63,160 @@ class Player {
         }
     }
 
-    // reset the piece to the top of the arena
-    reset()
-    {
-        const pieces = 'ILJOTSZ';
-        this.matrix = createPiece(pieces[Math.floor(Math.random() * pieces.length)]);
-        this.pos.y = 0;
-        this.pos.x = (this.arena.matrix[0].length / 2 | 0) -
-                     (this.matrix[0].length / 2 | 0);
-        if (this.arena.collide(this)) {
-            this.arena.clear();
-            this.score = 0;
-            updateScore();
-        }
-    }
-
-
-    // rotate the piece 
     rotate(dir) {
         const pos = this.pos.x;
-        let offset =  1;
+        let offset = 1;
         this._rotateMatrix(this.matrix, dir);
 
-        while(this.arena.collide(this)) {
+        while (this.arena.collide(this)) {
             this.pos.x += offset;
             offset = -(offset + (offset > 0 ? 1 : -1));
             if (offset > this.matrix[0].length) {
                 this._rotateMatrix(this.matrix, -dir);
-                this.pos.x = pos; 
+                this.pos.x = pos;
                 return;
             }
         }
-        
     }
 
-    // rotate the matrix (piece ) 90deg
     _rotateMatrix(matrix, dir) {
-        // Transpose the matrix
         for (let y = 0; y < matrix.length; ++y) {
             for (let x = 0; x < y; ++x) {
-                [
-                    matrix[x][y], 
-                    matrix[y][x]
-                ] = [
-                    matrix[y][x],
-                    matrix[x][y]
-                ];
+                [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
             }
         }
-
-        // Reverse rows or columns based on direction
         if (dir > 0) {
             matrix.forEach(row => row.reverse());
         } else {
             matrix.reverse();
         }
+    }
+
+    performBestMove() {
+        let bestScore = -Infinity;
+        let bestMove = null;
+
+        const originalY = this.pos.y;
+        const originalMatrix = this.matrix;
+
+        const allRotations = [0, 1, 2, 3];
+        const allPositions = [...Array(this.arena.matrix[0].length).keys()].map(i => i - this.matrix[0].length / 2 | 0);
+
+        for (const rotation of allRotations) {
+            for (const posX of allPositions) {
+                this.pos.x = posX;
+                this.pos.y = originalY;
+                this.matrix = this._rotateClone(originalMatrix, rotation);
+
+                if (this.arena.collide(this)) continue;
+
+                const score = this.evaluatePosition();
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMove = { x: posX, rotation };
+                }
+            }
+        }
+
+        if (bestMove) {
+            this.matrix = this._rotateClone(originalMatrix, bestMove.rotation);
+            this.pos.x = bestMove.x;
+            this.drop();
+        } else {
+            this.drop();
+        }
+    }
+
+    evaluatePosition() {
+        // Simulate the current piece's drop
+        const originalY = this.pos.y;
+        while (!this.arena.collide(this)) {
+            this.pos.y++;
+        }
+        this.pos.y--;
+
+        // Merge and evaluate
+        this.arena.merge(this);
+        const linesCleared = this.arena.sweep();
+        const height = this.getPileHeight();
+        const holes = this.getHoles();
+        const bumpiness = this.getBumpiness();
+
+        const score = linesCleared * 1000 - height * 40 - holes * 100 - bumpiness * 20;
+
+        // Undo the merge
+        this.arena.clearPiece(this);
+        this.pos.y = originalY;
+
+        return score;
+    }
+
+    getPileHeight() {
+        const rows = this.arena.matrix;
+        for (let y = 0; y < rows.length; ++y) {
+            for (let x = 0; x < rows[y].length; ++x) {
+                if (rows[y][x] !== 0) {
+                    return rows.length - y;
+                }
+            }
+        }
+        return 0;
+    }
+
+    getHoles() {
+        const rows = this.arena.matrix;
+        let holes = 0;
+        for (let x = 0; x < rows[0].length; x++) {
+            let blockFound = false;
+            for (let y = 0; y < rows.length; y++) {
+                if (rows[y][x] !== 0) {
+                    blockFound = true;
+                } else if (blockFound && rows[y][x] === 0) {
+                    holes++;
+                }
+            }
+        }
+        return holes;
+    }
+
+    getBumpiness() {
+        const rows = this.arena.matrix;
+        let bumpiness = 0;
+        let lastHeight = null;
+        for (let x = 0; x < rows[0].length; x++) {
+            let y = 0;
+            while (y < rows.length && rows[y][x] === 0) {
+                y++;
+            }
+            if (lastHeight !== null) {
+                bumpiness += Math.abs(lastHeight - y);
+            }
+            lastHeight = y;
+        }
+        return bumpiness;
+    }
+
+    _rotateClone(matrix, times) {
+        let clone = matrix.map(row => [...row]);
+        for (let i = 0; i < times; i++) {
+            clone = this._rotateMatrixCopy(clone, 1);
+        }
+        return clone;
+    }
+
+    _rotateMatrixCopy(matrix, dir) {
+        const result = matrix.map(row => [...row]);
+        for (let y = 0; y < matrix.length; ++y) {
+            for (let x = 0; x < y; ++x) {
+                [result[x][y], result[y][x]] = [result[y][x], result[x][y]];
+            }
+        }
+        if (dir > 0) {
+            result.forEach(row => row.reverse());
+        } else {
+            result.reverse();
+        }
+        return result;
     }
 }

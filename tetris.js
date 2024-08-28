@@ -8,6 +8,8 @@ class Tetris {
         this.arena = new Arena(12, 20); // Initialize the game arena
         this.player = new Player(this); // Initialize the player
         this.player.isCPU = isCPU;
+        this.updateInterval = 1000 / 1000
+        this.lastTime = 0;
 
         // Define colors for the different Tetris pieces
         this.colors = [
@@ -21,23 +23,26 @@ class Tetris {
             '#3877FF',      // Z piece
         ];
 
-        // Start the game loop
-        let lastTime = 0;
+        this.startGameLoop();
+        this.updateScore(0); 
+    }
+
+    startGameLoop() {
         const update = (time = 0) => {
-            const deltaTime = time - lastTime;
-            lastTime = time;
+            const deltaTime = time - this.lastTime;
 
-             // Update the player state
-            this.player.update(deltaTime);
+            if(deltaTime >= this.updateInterval) {
+                this.lastTime = time;
+                
+                this.player.update(deltaTime)
+                
+                this.draw()
+            }
 
-            this.draw(); 
-            // Request the next frame
-            requestAnimationFrame(update); 
+            requestAnimationFrame(update)
         };
 
-        update();
-
-        this.updateScore(0); 
+        update()
     }
 
     // Draw the entire game state on the canvas
@@ -46,8 +51,8 @@ class Tetris {
         this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
         // draw the ghost piece first 
-        const ghostPos = this.player.getGhostPosition();
-        this.drawMatrix(this.player.matrix, ghostPos, true)
+        //const ghostPos = this.player.getGhostPosition();
+        //this.drawMatrix(this.player.matrix, ghostPos, true)
 
         // draw the areand and the actual piece
         this.drawMatrix(this.arena.matrix, { x: 0, y: 0 }); 
@@ -69,6 +74,8 @@ class Tetris {
 
     // Update the score display on the page
     updateScore(score) {
-        this.element.querySelector('.score').innerText = score; // Set the score text
+        console.log(score);
+        
+        document.getElementById('cpu_score_1').innerText = score;
     }
 }
